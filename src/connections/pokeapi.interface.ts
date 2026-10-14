@@ -123,6 +123,76 @@ export interface PokemonCries {
 	legacy: string;
 }
 
+export interface AbilityEffectEntry {
+	effect: string;
+	language: NamedApiResource;
+	short_effect: string;
+}
+
+export interface AbilityEffectChange {
+	effect_entries: Array<{
+		effect: string;
+		language: NamedApiResource;
+	}>;
+	version_group: NamedApiResource;
+}
+
+export interface AbilityFlavorText {
+	flavor_text: string;
+	language: NamedApiResource;
+	version_group: NamedApiResource;
+}
+
+export interface AbilityName {
+	language: NamedApiResource;
+	name: string;
+}
+
+export interface AbilityPokemon {
+	is_hidden: boolean;
+	pokemon: NamedApiResource;
+	slot: number;
+}
+
+export interface Ability {
+	effect_changes: AbilityEffectChange[];
+	effect_entries: AbilityEffectEntry[];
+	flavor_text_entries: AbilityFlavorText[];
+	generation: NamedApiResource;
+	id: number;
+	is_main_series: boolean;
+	name: string;
+	names: AbilityName[];
+	pokemon: AbilityPokemon[];
+}
+
+export interface MoveEffectEntry {
+	effect: string;
+	language: NamedApiResource;
+	short_effect: string;
+}
+
+export interface MoveStatChange {
+	change: number;
+	stat: NamedApiResource;
+}
+
+export interface Move {
+	accuracy: number | null;
+	damage_class: NamedApiResource;
+	effect_chance: number | null;
+	effect_entries: MoveEffectEntry[];
+	generation: NamedApiResource;
+	id: number;
+	name: string;
+	power: number | null;
+	pp: number;
+	priority: number;
+	stat_changes: MoveStatChange[];
+	target: NamedApiResource;
+	type: NamedApiResource;
+}
+
 export interface Pokemon {
 	abilities: PokemonAbility[];
 	base_experience: number;
@@ -165,6 +235,15 @@ export const SimplePokemonSchema = z.object({
 				stat: data.stat.name,
 			})),
 	),
+	moves: z.array(
+		z.object({
+			move: z
+				.object({
+					name: z.string(),
+				})
+				.transform((data) => data.name),
+		}),
+	),
 	types: z.array(
 		z
 			.object({
@@ -178,4 +257,115 @@ export const SimplePokemonSchema = z.object({
 				type: data.type.name,
 			})),
 	),
+	abilities: z.array(
+		z
+			.object({
+				slot: z.number(),
+				ability: z.object({
+					name: z.string(),
+				}),
+			})
+			.transform((data) => ({
+				slot: data.slot,
+				ability: data.ability.name,
+			})),
+	),
 });
+
+export const SimpleAbilitySchema = z
+	.object({
+		id: z.number(),
+		name: z.string(),
+		is_main_series: z.boolean(),
+		generation: z.object({
+			name: z.string(),
+		}),
+		effect_entries: z.array(
+			z.object({
+				effect: z.string(),
+				short_effect: z.string(),
+				language: z.object({
+					name: z.string(),
+				}),
+			}),
+		),
+	})
+	.transform((data) => {
+		const english = data.effect_entries.find(
+			(entry) => entry.language.name === "en",
+		);
+
+		return {
+			id: data.id,
+			name: data.name,
+			is_main_series: data.is_main_series,
+			generation: data.generation.name,
+			effect: english?.effect ?? "",
+			short_effect: english?.short_effect ?? "",
+		};
+	});
+
+export const SimpleMoveSchema = z
+	.object({
+		id: z.number(),
+		name: z.string(),
+		accuracy: z.number().nullable(),
+		power: z.number().nullable(),
+		pp: z.number(),
+		priority: z.number(),
+		effect_chance: z.number().nullable(),
+		damage_class: z.object({
+			name: z.string(),
+		}),
+		type: z.object({
+			name: z.string(),
+		}),
+		target: z.object({
+			name: z.string(),
+		}),
+		generation: z.object({
+			name: z.string(),
+		}),
+		stat_changes: z.array(
+			z.object({
+				change: z.number(),
+				stat: z.object({
+					name: z.string(),
+				}),
+			}),
+		),
+		effect_entries: z.array(
+			z.object({
+				effect: z.string(),
+				short_effect: z.string(),
+				language: z.object({
+					name: z.string(),
+				}),
+			}),
+		),
+	})
+	.transform((data) => {
+		const english = data.effect_entries.find(
+			(entry) => entry.language.name === "en",
+		);
+
+		return {
+			id: data.id,
+			name: data.name,
+			accuracy: data.accuracy,
+			power: data.power,
+			pp: data.pp,
+			priority: data.priority,
+			effect_chance: data.effect_chance,
+			damage_class: data.damage_class.name,
+			type: data.type.name,
+			target: data.target.name,
+			generation: data.generation.name,
+			stat_changes: data.stat_changes.map((change) => ({
+				change: change.change,
+				stat: change.stat.name,
+			})),
+			effect: english?.effect ?? "",
+			short_effect: english?.short_effect ?? "",
+		};
+	});
